@@ -4,7 +4,7 @@
 	"name": "ftp Backup",
 	"description": "A backup plugin for MCDR",
 	"author": "yhy-yangyang",
-	"link": "",
+	"link": "https://github.com/yhy-yangyang/mcdr-ftpbackup",
 	"dependencies": {
 		"mcdreforged": ">=2.0.0"
 	}
