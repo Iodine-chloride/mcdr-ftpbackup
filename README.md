@@ -22,7 +22,7 @@
 ---
 
 ## 配置说明
-```json
+```
 {
   "host": "ftp.example.com",       // FTP 服务器地址
   "port": 21,                      // FTP 端口
