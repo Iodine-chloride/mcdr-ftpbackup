@@ -24,14 +24,16 @@ class CommandHandler:
                 .then(Literal('help').runs(self.show_help))
                 .then(Literal('test').runs(self.test_connection))
                 .then(Literal('make').runs(self.safe_backup))
+                .then(Literal('inquire').runs(self.backup_manager.inquire_backup))
             )
 
     def show_help(self, source: CommandSource):
         help_msg = RTextList(
-            RText("=== FTP备份插件帮助 ===").bold().color(RColor.gold), "\n",
+            RText("=== FTP备份插件帮助 ===").set_color(RColor.gold), "\n",
             RText(f"{self.config.prefix} help").set_color(RColor.blue) + " - 显示帮助\n",
             RText(f"{self.config.prefix} test").set_color(RColor.blue) + " - 测试FTP连接\n",
             RText(f"{self.config.prefix} make").set_color(RColor.blue) + " - 创建并上传备份\n",
+            RText(f"{self.config.prefix} inquire").set_color(RColor.blue) + " - 查询备份进度\n",
             RText(f"所需权限等级: {self.config.required_permission}").set_color(RColor.gray)
         )
         source.reply(help_msg)

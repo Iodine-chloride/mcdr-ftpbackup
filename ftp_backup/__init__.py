@@ -31,11 +31,6 @@ def on_load(server: PluginServerInterface, old_module):
         command_handler = CommandHandler(server, config, ftp_manager, backup_manager, server_controller, task_manager)
         command_handler.register_commands()
 
-        if ftp_manager.connect(config):
-            server.logger.info("FTP连接初始化成功")
-        else:
-            server.logger.warning("FTP连接初始化失败")
-
     except Exception as e:
         server.logger.critical(f"插件加载失败: {str(e)}")
         raise

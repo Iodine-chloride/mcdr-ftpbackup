@@ -10,9 +10,9 @@ class FTPManager:
         self.ftp_client: Optional[ftplib.FTP] = None
         self.encoding = 'utf-8'
 
-    def detect_encoding(self, host: str, port: int) -> str:
+    def detect_encoding(self, host: str, port: int, timeout: int) -> str:
         try:
-            with socket.create_connection((host, port), timeout=5) as sock:
+            with socket.create_connection((host, port), timeout=timeout) as sock:
                 welcome_bytes = sock.recv(1024)
                 result = chardet.detect(welcome_bytes)
                 return result['encoding'] if result['confidence'] > 0.5 else 'latin-1'
@@ -22,10 +22,10 @@ class FTPManager:
 
     def connect(self, config) -> bool:
         try:
-            self.encoding = self.detect_encoding(config.host, config.port)
+            self.encoding = self.detect_encoding(config.host, config.port, config.timeout)
             self.ftp_client = ftplib.FTP()
             self.ftp_client.encoding = self.encoding
-            self.ftp_client.connect(config.host, config.port, timeout=10)
+            self.ftp_client.connect(config.host, config.port, timeout=config.timeout)
             self.ftp_client.login(config.username, config.password)
             self.server.logger.info("FTP连接成功")
             return True

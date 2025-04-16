@@ -14,6 +14,9 @@ class BackupManager:
         os.makedirs(self.backup_dir, exist_ok=True)
         self.config = self.__validate_config(config)
         self.__validate_backup_dir()
+        self.backup = False
+        self.total_files = None
+        self.processed_files = 0
 
     def __validate_backup_dir(self):
         if not os.access(self.backup_dir, os.W_OK):
@@ -66,19 +69,19 @@ class BackupManager:
                 os.makedirs(self.backup_dir, exist_ok=True)
 
             # 初始化备份参数
-            total_files = self.__get_total_files()
-            processed_files = 0
+            self.total_files = self.__get_total_files()
+            self.processed_files = 0
             start_time = time.time()
 
             # 创建 ZIP 压缩包
             with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                self.server.logger.info("§b开始压缩，共发现 {} 个文件".format(total_files))
-
+                self.server.logger.info("§b开始压缩，共发现 {} 个文件".format(self.total_files))
+                self.backup = True
                 # 遍历并压缩文件
                 for full_path in self.__walk_files():
                     arcname = os.path.relpath(full_path, self.config.server_dir)
                     zipf.write(full_path, arcname)
-                    processed_files += 1
+                    self.processed_files += 1
 
             # 完成提示
             cost_time = time.time() - start_time
@@ -101,3 +104,10 @@ class BackupManager:
             old_file = backups.pop(0)
             os.remove(os.path.join(self.backup_dir, old_file))
             self.server.logger.info(f"§6已清理旧备份: {old_file}")
+
+    def inquire_backup(self):
+        if self.backup:
+            self.server.logger.info(f"§6总文件数：{self.total_files}")
+            self.server.logger.info(f"§6已备份文件数：{self.processed_files}")
+        else:
+            self.server.logger.info("§6没有在进行的备份任务")
