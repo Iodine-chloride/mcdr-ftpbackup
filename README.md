@@ -26,6 +26,7 @@
 {
   "host": "ftp.example.com",       // FTP 服务器地址
   "port": 21,                      // FTP 端口
+  "timeout": 10                    // 超时时间  
   "username": "anonymous",         // 登录用户名
   "password": "",                  // 登录密码
   "prefix": "!!fb",                // 命令前缀
@@ -48,13 +49,13 @@
 - `!!fb help` - 显示帮助信息
 - `!!fb test` - 测试与FTP服务器的连接
 - `!!fb make` - 创建一个备份并上传到FTP服务器
+- `!!fb inquire` - 查询备份进度
 ---
 
 ## 注意事项
-1. 在插件加载时会测试与FTP服务器的连接
-2. 首次使用前需要在`config.json`文件中修改FTP服务器有关设置
-3. 备份完毕后会在`backups`文件夹内保留备份，保留数量可在配置文件内修改
-4. 排除的文件以unix shell风格匹配
+1. 首次使用前需要在`config.json`文件中修改FTP服务器有关设置
+2. 备份完毕后会在`backups`文件夹内保留备份，保留数量可在配置文件内修改
+3. 排除的文件以unix shell风格匹配
 
 ---
 
@@ -71,4 +72,4 @@
 ## TODO
 - [ ] 支持sftp协议
 - [ ] 添加定时备份功能
-- [ ] 使用@new_thread实现多线程(~~不仔细看文档的后果~~)
+- [ ] 使用`@new_thread`实现多线程(~~不仔细看文档的后果~~)
