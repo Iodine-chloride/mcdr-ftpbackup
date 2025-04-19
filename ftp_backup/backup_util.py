@@ -95,6 +95,8 @@ class BackupManager:
             if os.path.exists(output_path):
                 os.remove(output_path)
             return None
+        finally:
+            self.backup = False
 
     def cleanup_backups(self):
         backups = sorted(

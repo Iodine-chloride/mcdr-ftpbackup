@@ -1,5 +1,4 @@
 import time
-import threading
 from mcdreforged.api.all import *
 
 class ServerController:
@@ -16,10 +15,11 @@ class ServerController:
         return current_status
 
     def safe_shutdown(self, callback: callable):
+        @new_thread
         def watcher():
             try:
                 if self.is_server_running():
-                    self.server.logger.info("§6正在安全关闭服务器...")
+                    self.server.logger.info("§6正在关闭服务器...")
                     self.server.stop()
                 else:
                     self.server.logger.warning("§e服务器已处于关闭状态")
@@ -34,8 +34,7 @@ class ServerController:
             except Exception as e:
                 self.server.logger.error(f"关闭过程出错: {str(e)}")
 
-        self.watcher_thread = threading.Thread(target=watcher, daemon=True)
-        self.watcher_thread.start()
+        watcher()
 
     def restart_server(self):
         if not self.is_server_running():

@@ -4,37 +4,37 @@ from .config import Config
 from .ftp_manager import FTPManager
 from .backup_util import BackupManager
 from .server_controller import ServerController
-from .async_task import AsyncTaskManager
+from .sftp_manager import SFTPManager
 
 
 class CommandHandler:
     def __init__(self, server: PluginServerInterface, config: Config,
                  ftp_manager: FTPManager, backup_manager: BackupManager,
-                 server_controller: ServerController, task_manager: AsyncTaskManager):
+                 server_controller: ServerController):
         self.server = server
         self.config = config
         self.ftp_manager = ftp_manager
         self.backup_manager = backup_manager
         self.server_controller = server_controller
-        self.task_manager = task_manager
 
     def register_commands(self):
         self.server.register_command(
             Literal(self.config.prefix)
-                .then(Literal('help').runs(self.show_help))
+                .runs(self.show_help)
                 .then(Literal('test').runs(self.test_connection))
-                .then(Literal('make').runs(self.safe_backup))
+                .then(Literal('make').runs(self.make_backup))
                 .then(Literal('inquire').runs(self.backup_manager.inquire_backup))
+                .then(Literal('reload').runs(self.reload_config))
             )
 
     def show_help(self, source: CommandSource):
         help_msg = RTextList(
             RText("=== FTP备份插件帮助 ===").set_color(RColor.gold), "\n",
-            RText(f"{self.config.prefix} help").set_color(RColor.blue) + " - 显示帮助\n",
+            RText(f"{self.config.prefix}").set_color(RColor.blue) + " - 显示本帮助\n",
             RText(f"{self.config.prefix} test").set_color(RColor.blue) + " - 测试FTP连接\n",
             RText(f"{self.config.prefix} make").set_color(RColor.blue) + " - 创建并上传备份\n",
             RText(f"{self.config.prefix} inquire").set_color(RColor.blue) + " - 查询备份进度\n",
-            RText(f"所需权限等级: {self.config.required_permission}").set_color(RColor.gray)
+            RText(f"{self.config.prefix} reload").set_color(RColor.blue) + " - 热重载配置\n"
         )
         source.reply(help_msg)
 
@@ -45,7 +45,7 @@ class CommandHandler:
             source.reply(RText("✗ 连接失败", color=RColor.red))
         self.ftp_manager.disconnect()
 
-    def safe_backup(self, source: CommandSource):
+    def make_backup(self, source: CommandSource):
         if not source.has_permission(self.config.required_permission):
             source.reply(RText("权限不足!", color=RColor.red))
             return
@@ -55,9 +55,10 @@ class CommandHandler:
             return
 
         source.reply(RText("§6正在准备备份，请稍候..."))
-        self.task_manager.create_task(self.__execute_safe_backup, (source,))
+        self.__execute_make_backup(source)
 
-    def __execute_safe_backup(self, source: CommandSource):
+    @new_thread
+    def __execute_make_backup(self, source: CommandSource):
         def shutdown_callback():
             try:
                 source.reply(RText("§6正在创建备份文件...", color=RColor.gold))
@@ -65,20 +66,21 @@ class CommandHandler:
 
                 if backup_path is None or not isinstance(backup_path, str):
                     raise ValueError("无效的备份路径")
-
-                source.reply(RText("§a备份文件创建完成，正在重启服务器...", color=RColor.green))
-                self.server_controller.restart_server()
-
-                self.task_manager.create_task(
-                    self.__upload_background,
-                    (source, str(backup_path))
-                )
+                if self.config.stop_server:
+                    source.reply(RText("§a备份文件创建完成，正在重启服务器...", color=RColor.green))
+                    self.server_controller.restart_server()
+                else:
+                    source.reply(RText("§a备份文件创建完成", color=RColor.green))
+                self.__upload_background(source, str(backup_path))
             except Exception as e:
                 self.server.logger.error(f"备份流程错误: {str(e)}")
                 source.reply(RText("§c备份流程出现异常", color=RColor.red))
+        if self.config.stop_server:
+            self.server_controller.safe_shutdown(shutdown_callback)
+        else:
+            shutdown_callback()
 
-        self.server_controller.safe_shutdown(shutdown_callback)
-
+    @new_thread
     def __upload_background(self, source: CommandSource, backup_path: str):
         try:
             if self.ftp_manager.connect(self.config):
@@ -107,8 +109,9 @@ class CommandHandler:
             source.reply(RText("权限不足!", color=RColor.red))
             return
 
-        self.task_manager.create_task(self.__do_upload, (source, file_path))
+        self.__do_upload(source, file_path)
 
+    @new_thread
     def __do_upload(self, source: CommandSource, file_path: str):
         if self.ftp_manager.connect(self.config):
             try:
@@ -118,3 +121,39 @@ class CommandHandler:
                     source.reply(RText("§c上传失败", color=RColor.red))
             finally:
                 self.ftp_manager.disconnect()
+
+    def reload_config(self, source: CommandSource):
+        if not source.has_permission(self.config.required_permission):
+            source.reply(RText("权限不足!", color=RColor.red))
+            return
+
+        try:
+            # 断开当前连接
+            self.ftp_manager.disconnect()
+
+            # 重新加载配置
+            new_config = self.server.load_config_simple(
+                file_name='config.json',
+                target_class=Config,
+                default_config={'prefix': '!!fb'}
+            )
+
+            # 更新配置引用
+            self.config = new_config
+            self.__update_transfer_manager()
+
+            source.reply(RText("§a配置已重载", color=RColor.green))
+        except Exception as e:
+            self.server.logger.error(f"配置重载失败: {str(e)}")
+            source.reply(RText(f"§c配置重载失败: {str(e)}", color=RColor.red))
+
+    def __update_transfer_manager(self):
+        if self.config.protocol.lower() == 'sftp':
+            self.ftp_manager = SFTPManager(self.server)
+            self.server.logger.info("已选择SFTP协议")
+        elif self.config.protocol.lower() == 'ftp':
+            self.ftp_manager = FTPManager(self.server)
+            self.server.logger.info("已选择FTP协议")
+        else:
+            self.ftp_manager = FTPManager(self.server)
+            self.server.logger.error("未知的协议，已选择默认FTP协议")
