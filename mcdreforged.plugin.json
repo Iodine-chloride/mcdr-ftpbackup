@@ -1,11 +1,12 @@
 {
 	"id": "ftp_backup",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"name": "ftp Backup",
 	"description": "A backup plugin for MCDR",
 	"author": "yhy-yangyang",
 	"link": "https://github.com/yhy-yangyang/mcdr-ftpbackup",
 	"dependencies": {
-		"mcdreforged": ">=2.0.0"
-	}
+		"mcdreforged": ">=2.7.0"
+	},
+	"archive_name": "ftp_backup-v{version}"
 }

@@ -1,2 +1,3 @@
 mcdreforged
 chardet
+paramiko
