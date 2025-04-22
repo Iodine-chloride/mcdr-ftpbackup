@@ -16,3 +16,5 @@ class Config(Serializable):
     exclude_patterns: list = ["logs",
                               "*.tmp",
                               "*.lock"]
+    remote_path : str = '/'
+    local_path: str = './backups'
