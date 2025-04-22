@@ -1,6 +1,7 @@
 import ftplib
 import socket
 import chardet
+import os
 from typing import Optional
 from mcdreforged.api.all import PluginServerInterface
 
@@ -33,14 +34,16 @@ class FTPManager:
             self.server.logger.error(f"连接失败: {str(e)}")
             return False
 
-    def upload_file(self, file_path: str) -> bool:
+    def upload_file(self, file_path: str, config) -> bool:
         if self.ftp_client is None:
             return False
 
         try:
+            remote_filename = os.path.basename(file_path)
+            remote_path = f"{config.remote_path}/{remote_filename}".replace('//', '/')
             with open(file_path, 'rb') as f:
-                self.ftp_client.storbinary(f'STOR {file_path}', f)
-            self.server.logger.info(f"已上传 {file_path}")
+                self.ftp_client.storbinary(f'STOR {remote_path}', f)
+            self.server.logger.info(f"已上传至 {remote_path}")
             return True
         except Exception as e:
             self.server.logger.error(f"上传失败: {str(e)}")
