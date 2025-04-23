@@ -50,7 +50,7 @@ class CommandHandler:
             source.reply(RText("权限不足!", color=RColor.red))
             return
 
-        if self.server_controller.watcher_thread and self.server_controller.watcher_thread.is_alive():
+        if self.backup_manager.backup:
             source.reply(RText("§c已有备份任务在进行中", color=RColor.red))
             return
 
