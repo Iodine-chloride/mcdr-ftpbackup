@@ -85,7 +85,7 @@ class CommandHandler:
         try:
             if self.ftp_manager.connect(self.config):
                 file_size = os.path.getsize(backup_path) / 1024 / 1024
-                if self.ftp_manager.upload_file(backup_path):
+                if self.ftp_manager.upload_file(backup_path, self.config):
                     source.reply(
                         RTextList(
                             RText("§a备份上传成功！", color=RColor.green),
@@ -115,7 +115,7 @@ class CommandHandler:
     def __do_upload(self, source: CommandSource, file_path: str):
         if self.ftp_manager.connect(self.config):
             try:
-                if self.ftp_manager.upload_file(file_path):
+                if self.ftp_manager.upload_file(file_path, self.config):
                     source.reply(RText(f"§a已上传 {file_path}", color=RColor.green))
                 else:
                     source.reply(RText("§c上传失败", color=RColor.red))
@@ -141,6 +141,7 @@ class CommandHandler:
             # 更新配置引用
             self.config = new_config
             self.__update_transfer_manager()
+            self.backup_manager.update_config(new_config)
 
             source.reply(RText("§a配置已重载", color=RColor.green))
         except Exception as e:

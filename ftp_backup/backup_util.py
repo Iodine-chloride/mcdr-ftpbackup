@@ -10,13 +10,19 @@ from .config import Config
 class BackupManager:
     def __init__(self, server: PluginServerInterface, config: Config):
         self.server = server
-        self.backup_dir = os.path.abspath(os.path.join('backups'))
+        self.backup_dir = os.path.abspath(config.local_path)
         os.makedirs(self.backup_dir, exist_ok=True)
         self.config = self.__validate_config(config)
         self.__validate_backup_dir()
         self.backup = False
         self.total_files = None
         self.processed_files = 0
+
+    def update_config(self, new_config: Config):
+        self.config = self.__validate_config(new_config)
+        self.backup_dir = os.path.abspath(self.config.local_path)
+        os.makedirs(self.backup_dir, exist_ok=True)
+        self.__validate_backup_dir()
 
     def __validate_backup_dir(self):
         if not os.access(self.backup_dir, os.W_OK):
