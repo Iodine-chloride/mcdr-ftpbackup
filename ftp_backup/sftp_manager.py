@@ -27,12 +27,14 @@ class SFTPManager:
             self.server.logger.info("SFTP连接成功")
             return True
         except Exception as e:
-            self.server.logger.error(f"SFTP连接失败: {str(e)}",exc_info=True)
+            self.server.logger.error(f"SFTP连接失败: {str(e)}")
+            self.disconnect()
             return False
 
     def upload_file(self, file_path: str, config) -> bool:
         if self.sftp_client is None:
             return False
+
         try:
             remote_filename = os.path.basename(file_path)
             remote_dir = config.remote_path
