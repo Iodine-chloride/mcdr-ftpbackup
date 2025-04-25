@@ -17,6 +17,7 @@ class BackupManager:
         self.backup = False
         self.total_files = None
         self.processed_files = 0
+        self.abort_backup = False
 
     def update_config(self, new_config: Config):
         self.config = self.__validate_config(new_config)
@@ -68,6 +69,7 @@ class BackupManager:
             # 生成备份文件名和路径
             timestamp = time.strftime("%Y%m%d-%H%M%S")
             filename = f"backup_{timestamp}.zip"
+            self.abort_backup = False
             output_path = os.path.join(self.backup_dir, filename)
 
             # 确保备份目录存在
@@ -85,6 +87,9 @@ class BackupManager:
                 self.backup = True
                 # 遍历并压缩文件
                 for full_path in self.__walk_files():
+                    if self.abort_backup:
+                        #抛出自定义异常
+                        raise BackupAbortedException("用户终止了备份")
                     arcname = os.path.relpath(full_path, self.config.server_dir)
                     zipf.write(full_path, arcname)
                     self.processed_files += 1
@@ -95,6 +100,12 @@ class BackupManager:
             self.server.logger.info(f"§a备份文件已保存至: §e{output_path}")
 
             return output_path
+        #捕获自定义异常
+        except BackupAbortedException as e:
+            self.server.logger.error(f"\n§c备份已终止: {str(e)}")
+            if os.path.exists(output_path):
+                os.remove(output_path)
+            return None
         except Exception as e:
             self.server.logger.error(f"\n§c压缩失败: {str(e)}")
             # 删除未完成的备份文件
@@ -119,3 +130,9 @@ class BackupManager:
             self.server.logger.info(f"§6已备份文件数：{self.processed_files}")
         else:
             self.server.logger.info("§6没有在进行的备份任务")
+
+    def abort_backup_process(self):
+        self.abort_backup = True
+
+class BackupAbortedException(Exception):
+    pass
