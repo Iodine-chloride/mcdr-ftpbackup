@@ -24,23 +24,27 @@
 ## 配置说明
 ```
 {
-  "stop_server": true,             // 是否在备份前停服
-  "protocol": "ftp",               // 选择协议 大小写均可
-  "host": "ftp.example.com",       // FTP/SFTP 服务器地址
-  "port": 21,                      // FTP/SFTP 端口
-  "timeout": 10                    // 超时时间  
-  "username": "anonymous",         // 登录用户名
-  "private_key_path": "",          // SFTP服务器秘钥路径
-  "password": "",                  // 登录密码
-  "prefix": "!!fb",                // 命令前缀
-  "server_dir": "./server",        // 服务器目录
-  "keep_local_backups": 3,         // 本地保留备份数量
-  "required_permission": 3,        // 操作所需权限等级
-  "exclude_patterns": [            // 需要排除的文件
-    "logs",
-    "*.tmp",
-    "*.lock"
-  ]
+    "stop_server": true,                // 是否在备份前停服
+    "protocol": "ftp",                  // 选择协议 大小写均可
+    "host": "ftp.example.com",          // FTP/SFTP 服务器地址
+    "port": 21,                         // FTP/SFTP 端口
+    "timeout": 10,                      // 超时时间  
+    "username": "anonymous",            // 登录用户名
+    "private_key_path": "",             // SFTP服务器秘钥路径
+    "password": "",                     // 登录密码
+    "prefix": "!!fb",                   // 命令前缀
+    "server_dir": "./server",           // 服务器目录
+    "keep_local_backups": 3,            // 本地保留备份数量
+    "required_permission": 3,           // 操作所需权限等级
+    "exclude_patterns": [               // 需要排除的文件
+        "logs",
+        "*.tmp",
+        "*.lock"
+    ]
+    remote_path : str = '/'             // 指定远程备份路径
+    local_path: str = './backups'       // 指定本地备份路径
+    auto_backup: bool = False           // 是否开启定时备份功能
+    cron_expression: str = '0 0 * * *'  // 定时备份时间
 }
 ```
 
@@ -54,12 +58,14 @@
 - `!!fb make` - 创建一个备份并上传到FTP服务器
 - `!!fb inquire` - 查询备份进度
 - `!!fb reload` - 热重载配置
+- `!!fb abort` - 终止备份
 ---
 
 ## 注意事项
 1. 首次使用前需要在`config.json`文件中修改FTP/SFTP服务器有关设置
 2. 备份完毕后会在`backups`文件夹内保留备份，保留数量可在配置文件内修改
 3. 排除的文件以unix shell风格匹配
+4. 定时备份表达式为一个 crontab 字符串，可以使用 <https://crontab.guru/> 来创建一个 crontab 字符串
 
 ---
 
@@ -75,5 +81,5 @@
 
 ## TODO
 - [x] 支持sftp协议
-- [ ] 添加定时备份功能
+- [x] 添加定时备份功能
 - [x] 使用`@new_thread`实现多线程(~~不仔细看文档的后果~~)

@@ -1,4 +1,6 @@
 import os
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from mcdreforged.api.all import *
 from .config import Config
 from .ftp_manager import FTPManager
@@ -17,6 +19,7 @@ class CommandHandler:
         self.ftp_manager = ftp_manager
         self.backup_manager = backup_manager
         self.server_controller = server_controller
+        self.scheduler = None
 
     def register_commands(self):
         self.server.register_command(
@@ -155,9 +158,11 @@ class CommandHandler:
             )
 
             # 更新配置引用
+            old_config = self.config
             self.config = new_config
             self.__update_transfer_manager()
             self.backup_manager.update_config(new_config)
+            self.__update_timed_tasks(old_config)
 
             source.reply(RText("§a配置已重载", color=RColor.green))
         except Exception as e:
@@ -167,10 +172,10 @@ class CommandHandler:
     def __update_transfer_manager(self):
         if self.config.protocol.lower() == 'sftp':
             self.ftp_manager = SFTPManager(self.server)
-            self.server.logger.info("已选择SFTP协议")
+            self.server.logger.info("§6已选择SFTP协议")
         elif self.config.protocol.lower() == 'ftp':
             self.ftp_manager = FTPManager(self.server)
-            self.server.logger.info("已选择FTP协议")
+            self.server.logger.info("§6已选择FTP协议")
         else:
             self.ftp_manager = FTPManager(self.server)
             self.server.logger.error("未知的协议，已选择默认FTP协议")
@@ -181,3 +186,45 @@ class CommandHandler:
             source.reply(RText("§6已发送终止信号，正在停止备份...", color=RColor.gold))
         else:
             source.reply(RText("§c当前没有进行中的备份", color=RColor.red))
+
+    def auto_backup(self):
+        try:
+            source = self.server.get_plugin_command_source()
+            source.reply(RText("§6触发定时备份任务"))
+            self.make_backup(source)
+        except Exception as e:
+            self.server.logger.error(f"定时备份过程中出错: {str(e)}")
+            source.reply(RText(f"§c定时备份过程中出错: {str(e)}", color=RColor.red))
+
+    def start_timed_tasks(self):
+        try:
+            self.server.logger.info("§6正在初始化定时备份任务")
+            self.scheduler = BackgroundScheduler()
+            trigger = CronTrigger.from_crontab(self.config.cron_expression)
+            self.scheduler.add_job(self.auto_backup, trigger)
+            self.scheduler.start()
+            self.server.logger.info("§6定时任务初始化完成")
+        except Exception as e:
+            self.server.logger.error(f"定时备份初始化过程中出错: {str(e)}")
+
+    def stop_timed_tasks(self):
+        if not hasattr(self, 'scheduler') or self.scheduler is None:
+            self.server.logger.info(RText("§c定时备份任务未启动", color=RColor.red))
+            return
+
+        self.scheduler.shutdown()
+        self.server.logger.info("§6定时备份任务已终止")
+
+    def shutdown_scheduler(self):
+        if self.scheduler:
+            self.scheduler.shutdown(wait=False)
+            self.scheduler = None
+
+    def __update_timed_tasks(self, old_config):
+        if old_config.auto_backup == False and self.config.auto_backup:
+            self.start_timed_tasks()
+        elif old_config.auto_backup and self.config.auto_backup == False:
+            self.stop_timed_tasks()
+        if old_config.cron_expression != self.config.cron_expression and self.config.auto_backup:
+            self.stop_timed_tasks()
+            self.start_timed_tasks()

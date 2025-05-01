@@ -28,10 +28,10 @@ def on_load(server: PluginServerInterface, old_module):
 
         if config.protocol.lower() == 'sftp':
             transfer_manager = SFTPManager(server)
-            server.logger.info("已选择SFTP协议")
+            server.logger.info("§6已选择SFTP协议")
         elif config.protocol.lower() == 'ftp':
             transfer_manager = FTPManager(server)
-            server.logger.info("已选择FTP协议")
+            server.logger.info("§6已选择FTP协议")
         else:
             transfer_manager = FTPManager(server)
             server.logger.error("未知的协议，已选择默认FTP协议")
@@ -47,6 +47,10 @@ def on_load(server: PluginServerInterface, old_module):
         )
         command_handler.register_commands()
 
+        if config.auto_backup:
+            command_handler.start_timed_tasks()
+
+
     except Exception as e:
         server.logger.critical(f"插件加载失败: {str(e)}")
         raise
@@ -54,3 +58,4 @@ def on_load(server: PluginServerInterface, old_module):
 
 def on_unload(server: PluginServerInterface):
     transfer_manager.disconnect()
+    command_handler.shutdown_scheduler()

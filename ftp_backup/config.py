@@ -18,3 +18,5 @@ class Config(Serializable):
                               "*.lock"]
     remote_path : str = '/'
     local_path: str = './backups'
+    auto_backup: bool = False
+    cron_expression: str = '0 0 * * *'
