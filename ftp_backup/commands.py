@@ -1,4 +1,6 @@
 import os
+import re
+import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from mcdreforged.api.all import *
@@ -20,6 +22,9 @@ class CommandHandler:
         self.backup_manager = backup_manager
         self.server_controller = server_controller
         self.scheduler = None
+        self.save_completed = False
+        self.save_wait_event = threading.Event()
+        self.save_timeout = 30
 
     def register_commands(self):
         self.server.register_command(
@@ -31,6 +36,7 @@ class CommandHandler:
                 .then(Literal('reload').runs(self.reload_config))
                 .then(Literal('abort').runs(self.abort_backup))
             )
+        self.server.register_event_listener('mcdr.general_info', self.on_info)
 
     def show_help(self, source: CommandSource):
         help_msg = RTextList(
@@ -67,6 +73,16 @@ class CommandHandler:
     def __execute_make_backup(self, source: CommandSource):
         def shutdown_callback():
             try:
+                if not self.config.stop_server:
+                    source.get_server().execute("save-off")
+                    source.get_server().execute("save-all")
+                    self.save_wait_event.clear()
+                    self.save_completed = False
+                    if not self.save_wait_event.wait(self.save_timeout):
+                        raise TimeoutError("等待保存超时")
+                    if not self.save_completed:
+                        raise RuntimeError("未检测到保存完成信号")
+                    
                 source.reply(RText("§6正在创建备份文件...", color=RColor.gold))
                 backup_path = self.backup_manager.create_backup()
 
@@ -80,6 +96,10 @@ class CommandHandler:
                 else:
                     source.reply(RText("§a备份文件创建完成", color=RColor.green))
                 self.__upload_background(source, str(backup_path))
+            except (TimeoutError, RuntimeError) as e:
+                source.reply(RText(f"§c备份失败: {str(e)}", color=RColor.red))
+                self.server.logger.error(str(e))
+                return
             except BackupAbortedException as e:
                 self.server.logger.error("备份被用户终止")
                 source.reply(RText("§c备份已终止", color=RColor.red))
@@ -94,6 +114,9 @@ class CommandHandler:
                             source.reply(RText("§a服务器已强制重启", color=RColor.green))
                     except Exception as e:
                         self.server.logger.critical(f"服务器重启失败: {str(e)}")
+
+                else:
+                    source.get_server().execute("save-on")
         if self.config.stop_server:
             self.server_controller.safe_shutdown(shutdown_callback)
         else:
@@ -228,3 +251,8 @@ class CommandHandler:
         if old_config.cron_expression != self.config.cron_expression and self.config.auto_backup:
             self.stop_timed_tasks()
             self.start_timed_tasks()
+
+    def on_info(self, server: PluginServerInterface, info: Info):
+        if not info.is_user and re.fullmatch(self.config.saved_game_regex, info.content):
+            self.save_completed = True
+            self.save_wait_event.set()

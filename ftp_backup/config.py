@@ -20,3 +20,4 @@ class Config(Serializable):
     local_path: str = './backups'
     auto_backup: bool = False
     cron_expression: str = '0 0 * * *'
+    saved_game_regex: str = r'Saved the game.*' #保存世界完成信息正则表达式
