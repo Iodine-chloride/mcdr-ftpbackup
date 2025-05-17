@@ -83,3 +83,8 @@
 - [x] 支持sftp协议
 - [x] 添加定时备份功能
 - [x] 使用`@new_thread`实现多线程(~~不仔细看文档的后果~~)
+
+---
+
+## 友商项目
+- [八宝粥 (多)MC服务端管理面板](https://github.com/babaozhouO/BBZ-MCServers-Manager)
